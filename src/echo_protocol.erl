@@ -34,7 +34,6 @@ loop(Socket, Transport) ->
     {ok, <<"JOIN CHAT ", Id/binary>>} ->
       JoinChat = chat:join(Id, Socket),
       Transport:send(Socket, JoinChat),
-      ?LOG_INFO("~p~n",ets:tab2list(chat_manager)),
       loop(Socket, Transport);
 
     {ok, <<"SEND CHAT ", Msg/binary>>} ->
@@ -50,24 +49,26 @@ loop(Socket, Transport) ->
   end.
 
 send(Socket, Data) ->
+  ?LOG_INFO("~p~n",[Socket, Data]),
   ranch_tcp:send(Socket, Data),
   loop(Socket, ranch_tcp).
 
 
 pool_send(Msg) ->
   C = #chat_table{},
-  SplitMsg = case binary:split(Msg, <<" ">>) of
+ case binary:split(Msg, <<" ">>) of
     [Id, Message] ->
       [BinaryId] = binary:split(Id, <<"\r\n">>),
       bang(ets:first(C#chat_table.tid), BinaryId, Message, C#chat_table.tid)
-  end,
-  SplitMsg.
+  end.
+
 
 bang('$end_of_table',  _BinaryId, _Msg, _Tab) -> ok;
 bang(Firts,  BinaryId, Msg, Tab) ->
   case ets:lookup(Tab, Firts) of
-    [{Ref, BinaryId}] ->
-      send(Ref, Msg);
+    [{Ref, _}] ->
+      [BinaryMsg, _] = binary:split(Msg, <<"\r\n">>),
+      send(Ref, BinaryMsg);
     _ ->
       ok
   end,
