@@ -7,3 +7,4 @@ webserver.iml
 ebin/*
 aic.ets
 Guardfile
+chat_rooms

@@ -13,7 +13,7 @@ start(_StartType, _StartArgs) ->
     Port = 5555,
   {ok, _} = ranch:start_listener(tcp_echo, 100,
     ranch_tcp, [{port, Port}],
-    echo_protocol, []
+    rp, []
   ),
   webserver_sup:start_link().
 
