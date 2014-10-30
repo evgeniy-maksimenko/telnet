@@ -1,4 +1,3 @@
-
 -module(rp_chat).
 -include("../include/config.hrl").
 -record(chat_table,{
@@ -55,8 +54,6 @@ to_dets(Method, File, Key, ChartName) ->
 show() ->
   C = #chat_table{},
   case filelib:is_file(C#chat_table.file) of
-    false ->
-      {error, file_not_found};
     true->
       case dets:open_file(C#chat_table.file, [{type, bag}]) of
         {ok, _Reference} ->
@@ -68,7 +65,9 @@ show() ->
           end;
         {error, Reason} ->
           {error, Reason}
-      end
+      end;
+    false ->
+      {error, file_not_found}
   end.
 
 -spec join(Pid::pid(),Id::<<>>,Ref::char()) -> answer().
@@ -103,13 +102,11 @@ bang(Firts, Id, Msg, Tab) ->
           {ok, send_msg, Msg}
       end;
     Id ->
-      NewID = list_to_integer(binary_to_list(Id)),
       case ets:lookup(Tab, Firts) of
-        [{PidNew2, RefNew2, NewID}] ->
+        [{PidNew2, RefNew2, Id}] ->
           PidNew2 ! {tcp, RefNew2, Msg};
         _ ->
           {ok, send_msg, Msg}
       end
   end,
   bang(ets:next(Tab, Firts), Id, Msg, Tab).
-

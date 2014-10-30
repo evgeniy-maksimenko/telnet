@@ -1,7 +1,15 @@
-
 -module(rp).
 -behaviour(gen_server).
 -behaviour(ranch_protocol).
+
+%% @doc telnet chat-server
+%% What can you do
+%% crete/new room
+%% show/
+%% join/1
+%% send/1 text
+%% send/text
+%% @end
 
 -include("../include/config.hrl").
 -export([start_link/4]).
@@ -37,13 +45,16 @@ handle_info({tcp, Socket, Data}, State=#state{socket = Socket, transport=Transpo
   Transport:setopts(Socket, [{active, once}]),
   case Data of
     <<"create/",Create/binary>> ->
+      rp_chat:create(Create),
       Transport:send(Socket, <<"create ",Create/binary>>);
 
     <<"show/",_/binary>> ->
-      ?LOG_INFO("~p~n",[rp_chat:show()]),
-      Transport:send(Socket, <<"ok">>);
+      Object = rp_chat:show(),
+      ShowOut = show_in(Object),
+      Transport:send(Socket, list_to_binary(ShowOut));
 
     <<"join/",Id/binary>> ->
+      rp_chat:join(self(), Id, Socket),
       Transport:send(Socket, <<"join to ",Id/binary>>);
 
     <<"send/",Msg/binary>> ->
@@ -79,3 +90,13 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
 
+show_in(Object) ->
+  {ok,List} = Object,
+  remove_key(List).
+
+
+remove_key(List) -> remove_key(List, []).
+remove_key([], Acc) -> Acc;
+remove_key([H | T], Acc) ->
+ {_, Id, Name} = H,
+ remove_key(T, [ "id | " ++ integer_to_list(Id) ++ " | name | " ++ binary_to_list(Name) ++ "\r\n" | Acc]).
