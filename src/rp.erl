@@ -91,8 +91,12 @@ code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
 
 show_in(Object) ->
-  {ok,List} = Object,
-  remove_key(List).
+  case Object of
+    {ok,List} ->
+      remove_key(List);
+    {error, _Reason} ->
+      "error, no rooms"
+  end.
 
 
 remove_key(List) -> remove_key(List, []).
