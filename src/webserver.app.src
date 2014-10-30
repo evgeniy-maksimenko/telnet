@@ -21,14 +21,5 @@
     poolboy
   ]},
   {mod, { webserver_app, []}},
-  {env, [
-    {pools, [
-      {pool1, [
-        {size, 10},
-        {max_overflow, 20}
-      ],[
-        {tid, "chat_manager"}
-      ]}
-    ]}
-  ]}
+  {env, []}
  ]}.

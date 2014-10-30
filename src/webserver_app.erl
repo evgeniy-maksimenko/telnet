@@ -10,8 +10,10 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    Port = 5555,
-  {ok, _} = ranch:start_listener(tcp_echo, 100,
+  {ok, List} = application:get_env(webserver, ranch_listener),
+
+  Port = proplists:get_value(port, List),
+    {ok, _} = ranch:start_listener(tcp_echo, proplists:get_value(nb_acceptors, List),
     ranch_tcp, [{port, Port}],
     rp, []
   ),

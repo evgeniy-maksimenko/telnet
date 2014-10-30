@@ -17,5 +17,6 @@ init([]) ->
   ets:new(C#chat_table.tid, [named_table, public, set]),
 
   Flags = {one_for_one, 5, 10},
-  {ok, { Flags , []} }.
+  PbSup = {pb_sup, {pb_sup, start_link, []}, permanent, 10500, supervisor, [pb_sup]},
+  {ok, { Flags , [PbSup]} }.
 

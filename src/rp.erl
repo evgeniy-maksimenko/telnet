@@ -37,28 +37,29 @@ init(Ref, Socket, Transport, _Opts = []) ->
 
   ok = proc_lib:init_ack({ok, self()}),
   ok = ranch:accept_ack(Ref),
-  ok = Transport:setopts(Socket, [{active, once}]),
+  ok = Transport:setopts(Socket, [{active, true}]),
   gen_server:enter_loop(?MODULE, [],
     #state{socket=Socket, transport=Transport},
     ?TIMEOUT).
 handle_info({tcp, Socket, Data}, State=#state{socket = Socket, transport=Transport}) ->
   Transport:setopts(Socket, [{active, once}]),
+  PoolName = pool1,
   case Data of
     <<"create/",Create/binary>> ->
-      rp_chat:create(Create),
+      pb_worker:create_chat(PoolName, Create),
       Transport:send(Socket, <<"create ",Create/binary>>);
 
     <<"show/",_/binary>> ->
-      Object = rp_chat:show(),
+      Object = pb_worker:show_chats(PoolName),
       ShowOut = show_in(Object),
       Transport:send(Socket, list_to_binary(ShowOut));
 
     <<"join/",Id/binary>> ->
-      rp_chat:join(self(), Id, Socket),
+      pb_worker:join_chat(PoolName, self(), Id, Socket),
       Transport:send(Socket, <<"join to ",Id/binary>>);
 
     <<"send/",Msg/binary>> ->
-      rp_chat:send(Msg);
+      pb_worker:broadcast(PoolName, Msg);
 
     Data ->
       Transport:send(Socket, Data)
@@ -104,3 +105,4 @@ remove_key([], Acc) -> Acc;
 remove_key([H | T], Acc) ->
  {_, Id, Name} = H,
  remove_key(T, [ "id | " ++ integer_to_list(Id) ++ " | name | " ++ binary_to_list(Name) ++ "\r\n" | Acc]).
+
