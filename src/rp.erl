@@ -37,19 +37,17 @@ handle_info({tcp, Socket, Data}, State=#state{socket = Socket, transport=Transpo
   Transport:setopts(Socket, [{active, once}]),
   case Data of
     <<"create/",Create/binary>> ->
-      ?LOG_INFO("~p~n",[rp_chat:create(Create)]),
-      Transport:send(Socket, Create);
+      Transport:send(Socket, <<"create ",Create/binary>>);
 
     <<"show/",_/binary>> ->
       ?LOG_INFO("~p~n",[rp_chat:show()]),
       Transport:send(Socket, <<"ok">>);
 
     <<"join/",Id/binary>> ->
-      ?LOG_INFO("~p~n",[rp_chat:join(self(), Id, Socket)]),
-      Transport:send(Socket, Id);
+      Transport:send(Socket, <<"join to ",Id/binary>>);
 
     <<"send/",Msg/binary>> ->
-      ?LOG_INFO("~p~n",[rp_chat:send(Msg)]);
+      rp_chat:send(Msg);
 
     Data ->
       Transport:send(Socket, Data)

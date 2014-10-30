@@ -12,6 +12,10 @@
 -export([join/3]).
 -export([send/1]).
 
+-type answer() :: {ok, Reference::list()} | {error, Reason::list()}.
+
+-spec create(ChartName::<<>>) ->
+  {ok, Reference::list()} | {error, Reason::list()}.
 create(ChartName) ->
   C = #chat_table{},
   case filelib:is_file(C#chat_table.file) of
@@ -21,6 +25,7 @@ create(ChartName) ->
       to_dets(true, C#chat_table.file, C#chat_table.key, ChartName)
   end.
 
+-spec to_dets(Method::atom(), File::atom(), Key::atom(), ChartName::<<>>) -> answer().
 to_dets(Method, File, Key, ChartName) ->
   [ChartNameSplit, _] = binary:split(ChartName, <<"\r\n">>),
   case dets:open_file(File, [{type, bag}]) of
@@ -46,6 +51,7 @@ to_dets(Method, File, Key, ChartName) ->
       {error, ReasonOpenFile}
   end.
 
+-spec show()-> answer().
 show() ->
   C = #chat_table{},
   case filelib:is_file(C#chat_table.file) of
@@ -65,6 +71,7 @@ show() ->
       end
   end.
 
+-spec join(Pid::pid(),Id::<<>>,Ref::char()) -> answer().
 join(Pid, Id, Ref)->
   C = #chat_table{},
   [BinaryId, _] = binary:split(Id, <<"\r\n">>),
@@ -75,12 +82,12 @@ join(Pid, Id, Ref)->
       {error, faile_insert}
   end.
 
+
 send(Msg) ->
   C = #chat_table{},
   case binary:split(Msg, <<" ">>) of
     [Id, Message] ->
-      [BinaryId] = binary:split(Id, <<"\r\n">>),
-      bang(ets:first(C#chat_table.tid),BinaryId, Message, C#chat_table.tid);
+      bang(ets:first(C#chat_table.tid), Id, Message, C#chat_table.tid);
     [Message] ->
       bang(ets:first(C#chat_table.tid), [], Message, C#chat_table.tid)
   end.
@@ -96,9 +103,10 @@ bang(Firts, Id, Msg, Tab) ->
           {ok, send_msg, Msg}
       end;
     Id ->
+      NewID = list_to_integer(binary_to_list(Id)),
       case ets:lookup(Tab, Firts) of
-        [{PidNew, RefNew, Id}] ->
-          PidNew ! {tcp, RefNew, Msg};
+        [{PidNew2, RefNew2, NewID}] ->
+          PidNew2 ! {tcp, RefNew2, Msg};
         _ ->
           {ok, send_msg, Msg}
       end
