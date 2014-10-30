@@ -50,7 +50,7 @@ handle_info({tcp, Socket, Data}, State=#state{socket = Socket, transport=Transpo
       Transport:send(Socket, <<"create ",Create/binary>>);
 
     <<"show/",_/binary>> ->
-      Object = pb_worker:show_chats(PoolName),
+      Object  = pb_worker:show_chats(PoolName),
       ShowOut = show_in(Object),
       Transport:send(Socket, list_to_binary(ShowOut));
 

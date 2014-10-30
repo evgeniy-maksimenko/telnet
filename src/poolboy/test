@@ -114,8 +114,7 @@ bang(Firts, Id, Msg, Tab) ->
 
 -spec show(File::atom(), Key::atom())-> answer().
 show(File, Key) ->
-  case filelib:is_file(File) of
-    true->
+
       case dets:open_file(File, [{type, bag}]) of
         {ok, _Reference} ->
           case dets:lookup(File, Key) of
@@ -123,19 +122,14 @@ show(File, Key) ->
               {error, ErrorLookup};
             Object ->
               {ok, Object}
-          end;
-        {error, Reason} ->
-          {error, Reason}
-      end;
-    false ->
-      {error, file_not_found}
-  end.
+          end
+        {}
+  .
 
 -spec join(Pid::pid(),Id::binary(),Ref::char(), Tid::atom()) ->  {ok, insert} | {error, faile_insert}.
 join(Pid, Id, Ref, Tid)->
   [BinaryId, _] = binary:split(Id, <<"\r\n">>),
-  TrimId = binary2:trim(BinaryId),
-  case ets:insert(Tid, {Pid, Ref, TrimId}) of
+  case ets:insert(Tid, {Pid, Ref, BinaryId}) of
     true ->
       {ok, insert}
   end.
@@ -152,26 +146,23 @@ create(ChartName, File, Key) ->
 
 -spec to_dets(IsFileExists::boolean(), File::atom(), Key::atom(), ChartName::binary()) -> answer().
 to_dets(IsFileExists, File, Key, ChartName) ->
-  [ChartNameSplit, _] = binary:split(ChartName, <<"\r\n">>),
-  case dets:open_file(File, [{type, bag}]) of
-    {ok, _Reference} ->
-      case IsFileExists of
-        true->
-          [{_, Id, _}|_] = lists:reverse(lists:sort(dets:lookup(File, Key))),
-          case dets:insert(File, {Key, Id+1 , ChartNameSplit }) of
-            ok ->
-              {ok, {create_chat, ChartNameSplit}};
-            {error, ErrorInsert} ->
-              {error, ErrorInsert}
-          end;
-        false ->
-          case dets:insert(File, {Key, 0 , ChartNameSplit }) of
-            ok ->
-              {ok, {create_chat, ChartNameSplit}};
-            {error, ErrorInsertFirst} ->
-              {error, ErrorInsertFirst}
-          end
+  [ChatName, _] = binary:split(ChartName, <<"\r\n">>),
+  Dets = dets:open_file(File, [{type, bag}]),
+  save_to_dets(IsFileExists, Dets, File, Key, ChatName).
+
+
+save_to_dets(IsFileOpened, {ok, _Reference}, File, Key, ChatName) ->
+      [{_, Id, _}|_] = lists:reverse(lists:sort(dets:lookup(File, Key))),
+      case dets:insert(File, {Key, get_id(IsFileOpened, Id) , ChatName }) of
+        ok ->
+          {ok, {create_chat, ChatName}};
+        {error, _Reason} = Err ->Err
       end;
-    {error, ReasonOpenFile} ->
-      {error, ReasonOpenFile}
-  end.
+save_to_dets(_,_ = FileOpenErr, _File, _Key, _ChatName) ->
+    FileOpenErr.
+
+get_id(true, Id) -> Id+1;
+get_id(false, _Id) -> 0.
+
+
+
