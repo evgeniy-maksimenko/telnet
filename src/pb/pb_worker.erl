@@ -121,7 +121,7 @@ check_id([Id, Msg], Tid)  ->
 
 check_id([Msg], Tid) ->
   ListFromEts = qlc:e(qlc:q([{PidInEts, RefInEts, IdInEts} || {PidInEts, RefInEts, IdInEts} <- ets:table(Tid)])),
-  [Pid ! {tcp, Ref, Msg} || {Pid, Ref} <- ListFromEts ].
+  [Pid ! {tcp, Ref, Msg} || {Pid, Ref, _Id} <- ListFromEts ].
 
 -spec show(File::atom(),Key::atom()) ->
   Data::list() | {error, Failed::list()}.
