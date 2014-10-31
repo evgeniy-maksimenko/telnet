@@ -27,31 +27,34 @@
 -record(state, {socket, transport}).
 
 start_link(Ref, Socket, Transport, Opts) ->
-
   proc_lib:start_link(?MODULE, init, [Ref, Socket, Transport, Opts]).
 
 init([]) -> {ok, undefined}.
 init(Ref, Socket, Transport, _Opts = []) ->
-
-  ets:insert(chat_manager, {self(), Socket, 1}),
-
   ok = proc_lib:init_ack({ok, self()}),
   ok = ranch:accept_ack(Ref),
   ok = Transport:setopts(Socket, [{active, true}]),
   gen_server:enter_loop(?MODULE, [],
     #state{socket=Socket, transport=Transport},
     ?TIMEOUT).
+
+-spec(handle_info(Info :: timeout() | term(), State :: #state{}) ->
+  {noreply, NewState :: #state{}} |
+  {noreply, NewState :: #state{}, timeout() | hibernate} |
+  {stop, Reason :: term(), NewState :: #state{}}).
+
 handle_info({tcp, Socket, Data}, State=#state{socket = Socket, transport=Transport}) ->
   Transport:setopts(Socket, [{active, once}]),
   PoolName = pool1,
   case Data of
+
     <<"create/",Create/binary>> ->
       pb_worker:create_chat(PoolName, Create),
       Transport:send(Socket, <<"create ",Create/binary>>);
 
     <<"show/",_/binary>> ->
-      Object  = pb_worker:show_chats(PoolName),
-      ShowOut = show_in(Object),
+      List    = pb_worker:show_chats(PoolName),
+      ShowOut = remove_key(List),
       Transport:send(Socket, list_to_binary(ShowOut));
 
     <<"join/",Id/binary>> ->
@@ -64,7 +67,6 @@ handle_info({tcp, Socket, Data}, State=#state{socket = Socket, transport=Transpo
     Data ->
       Transport:send(Socket, Data)
   end,
-
   {noreply, State, ?TIMEOUT};
 
 handle_info({tcp_closed, _Socket}, State) ->
@@ -79,26 +81,37 @@ handle_info(timeout, State) ->
 handle_info(_Info, State) ->
   {stop, normal, State}.
 
+-spec(handle_call(Request :: term(), From :: {pid(), Tag :: term()},
+    State :: #state{}) ->
+  {reply, Reply :: term(), NewState :: #state{}} |
+  {reply, Reply :: term(), NewState :: #state{}, timeout() | hibernate} |
+  {noreply, NewState :: #state{}} |
+  {noreply, NewState :: #state{}, timeout() | hibernate} |
+  {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
+  {stop, Reason :: term(), NewState :: #state{}}).
+
 handle_call(_Request, _From, State) ->
   {reply, ok, State}.
 
+-spec(handle_cast(Request :: term(), State :: #state{}) ->
+  {noreply, NewState :: #state{}} |
+  {noreply, NewState :: #state{}, timeout() | hibernate} |
+  {stop, Reason :: term(), NewState :: #state{}}).
 handle_cast(_Msg, State) ->
   {noreply, State}.
+
+-spec(terminate(Reason :: (normal | shutdown | {shutdown, term()} | term()),
+    State :: #state{}) -> term()).
 
 terminate(_Reason, _State) ->
   ok.
 
+-spec(code_change(OldVsn :: term() | {down, term()}, State :: #state{},
+    Extra :: term()) ->
+  {ok, NewState :: #state{}} | {error, Reason :: term()}).
+
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
-
-show_in(Object) ->
-  case Object of
-    {ok,List} ->
-      remove_key(List);
-    {error, _Reason} ->
-      "error, no rooms"
-  end.
-
 
 remove_key(List) -> remove_key(List, []).
 remove_key([], Acc) -> Acc;
