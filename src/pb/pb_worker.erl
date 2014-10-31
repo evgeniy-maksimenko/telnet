@@ -112,16 +112,27 @@ code_change(_OldVsn, State, _Extra) ->
 -spec send(Msg::binary(), Tid::atom()) -> 'ok'.
 send(Msg, Tid) ->
   SplitMsg = binary:split(Msg, <<" ">>),
-  check_id(SplitMsg, Tid).
+  check_id(list_to_tuple(SplitMsg), Tid).
 
 -spec check_id(List::list(), Tid::atom()) -> 'ok'.
-check_id([Id, Msg], Tid)  ->
-  ListFromEts = qlc:e(qlc:q([{PidInEts, RefInEts, IdInEts} || {PidInEts, RefInEts, IdInEts} <- ets:table(Tid)])),
-  [Pid ! {tcp, Ref, Msg} || {Pid, Ref, Id} <- ListFromEts ];
+check_id({Id, Msg}, Tid)  ->
+  send_to_one(Tid, Msg, Id);
+check_id({Msg}, Tid) ->
+  send_to_all(Tid, Msg).
 
-check_id([Msg], Tid) ->
-  ListFromEts = qlc:e(qlc:q([{PidInEts, RefInEts, IdInEts} || {PidInEts, RefInEts, IdInEts} <- ets:table(Tid)])),
+-spec send_to_all(Tid::atom(), Msg::binary()) -> 'ok'.
+send_to_all(Tid, Msg) ->
+  ListFromEts = qlc_ets(Tid),
   [Pid ! {tcp, Ref, Msg} || {Pid, Ref, _Id} <- ListFromEts ].
+
+-spec send_to_one(Tid::atom(), Msg::binary(), Id::binary()) -> 'ok'.
+send_to_one(Tid, Msg, Id) ->
+  ListFromEts = qlc_ets(Tid),
+  [Pid ! {tcp, Ref, Msg} || {Pid, Ref, Id} <- ListFromEts ].
+
+-spec qlc_ets(Tid::atom()) -> Out::list().
+qlc_ets(Tid) ->
+  qlc:e(qlc:q([{PidInEts, RefInEts, IdInEts} || {PidInEts, RefInEts, IdInEts} <- ets:table(Tid)])).
 
 -spec show(File::atom(),Key::atom()) ->
   Data::list() | {error, Failed::list()}.
