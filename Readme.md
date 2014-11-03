@@ -1,5 +1,9 @@
 #telnet chat-server
 
+###Connect:###
+
+print - `telnet localhost 5555`
+
 ###Commands:###
 
 show all rooms  - `show/`
