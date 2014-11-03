@@ -126,9 +126,9 @@ send_to_all(Tid, Msg) ->
   [Pid ! {tcp, Ref, Msg} || {Pid, Ref, _Id} <- ListFromEts ].
 
 -spec send_to_one(Tid::atom(), Msg::binary(), Id::binary()) -> 'ok'.
-send_to_one(Tid, Msg, Id) ->
+send_to_one(Tid, Msg, ChooseId) ->
   ListFromEts = qlc_ets(Tid),
-  [Pid ! {tcp, Ref, Msg} || {Pid, Ref, Id} <- ListFromEts ].
+  [Pid ! {tcp, Ref, Msg} || {Pid, Ref, Id} <- ListFromEts, Id=:=ChooseId ].
 
 -spec qlc_ets(Tid::atom()) -> Out::list().
 qlc_ets(Tid) ->
@@ -149,7 +149,7 @@ lookup_from_dets(Failed, _File, _Key) -> Failed.
 lookuped({error, Failed}) -> {error, Failed};
 lookuped(Data) -> Data.
 
--spec join(Pid::_,Id::binary(),Ref::_,Tid::atom()) -> 'true'.
+-spec join(Pid::pid(),Id::binary(),Ref::any(),Tid::atom()) -> 'true'.
 join(Pid, Id, Ref, Tid)->
   [BinaryId, _] = binary:split(Id, <<"\r\n">>),
   ets:insert(Tid, {Pid, Ref, BinaryId}).
