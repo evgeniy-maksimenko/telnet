@@ -18,5 +18,6 @@ init([]) ->
 
   Flags = {one_for_one, 5, 10},
   PbSup = {pb_sup, {pb_sup, start_link, []}, permanent, 10500, supervisor, [pb_sup]},
-  {ok, { Flags , [PbSup]} }.
+  BrokerSup = {broker_sup, {broker_sup, start_link, []}, permanent, 10500, supervisor, [broker_sup]},
+  {ok, { Flags , [PbSup, BrokerSup]} }.
 

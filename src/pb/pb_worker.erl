@@ -116,8 +116,10 @@ send(Msg, Tid) ->
 
 -spec check_id(List::list(), Tid::atom()) -> 'ok'.
 check_id({Id, Msg}, Tid)  ->
+  broker_worker:send_logs_direct(["send", binary_to_list(Id) ++ binary_to_list(Msg)]),
   send_to_one(Tid, Msg, Id);
 check_id({Msg}, Tid) ->
+  broker_worker:send_logs_direct(["send", binary_to_list(Msg)]),
   send_to_all(Tid, Msg).
 
 -spec send_to_all(Tid::atom(), Msg::binary()) -> 'ok'.
@@ -137,6 +139,7 @@ qlc_ets(Tid) ->
 -spec show(File::atom(),Key::atom()) ->
   Data::list() | {error, Failed::list()}.
 show(File, Key) ->
+  broker_worker:send_logs_direct(["show","show"]),
   OpenFile = dets:open_file(File, [{type, bag}]),
   lookup_from_dets(OpenFile, File, Key).
 
@@ -152,6 +155,7 @@ lookuped(Data) -> Data.
 -spec join(Pid::pid(),Id::binary(),Ref::any(),Tid::atom()) -> 'true'.
 join(Pid, Id, Ref, Tid)->
   [BinaryId, _] = binary:split(Id, <<"\r\n">>),
+  broker_worker:send_logs_direct(["join", binary_to_list(BinaryId)]),
   ets:insert(Tid, {Pid, Ref, BinaryId}).
 
 -spec create(Name :: binary(), File::atom(), Key::atom()) ->
@@ -164,6 +168,7 @@ create(Name, File, Key) ->
   Out :: (atom() | list()).
 to_dets(IsFileExists, File, Key, Name) ->
   [SplitName, _]  = binary:split(Name, <<"\r\n">>),
+  broker_worker:send_logs_direct(["create", binary_to_list(SplitName)]),
   OpenFile        = dets:open_file(File, [{type, bag}]),
   save_to_dets(IsFileExists, OpenFile, File, Key, SplitName).
 
