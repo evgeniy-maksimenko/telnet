@@ -13,11 +13,11 @@
   terminate/2,
   code_change/3]).
 
--export([receive_logs_direct/2]).
+-export([receive_logs_direct/1]).
 
 -define(SERVER, ?MODULE).
 
--record(state, {}).
+-record(state, {channel}).
 
 %%%===================================================================
 %%% API
@@ -27,26 +27,8 @@
 start_link(Channel) ->
   gen_server:start_link({local, ?SERVER}, ?MODULE, [Channel], []).
 
-receive_logs_direct(Channel, Argv) ->
-  amqp_channel:call(Channel, #'exchange.declare'{exchange = <<"direct_logs">>,
-    type = <<"direct">>}),
-
-  #'queue.declare_ok'{queue = Queue} =
-    amqp_channel:call(Channel, #'queue.declare'{exclusive = true}),
-
-  [amqp_channel:call(Channel, #'queue.bind'{exchange = <<"direct_logs">>,
-    routing_key = list_to_binary(Severity),
-    queue = Queue})
-    || Severity <- Argv],
-
-  amqp_channel:subscribe(Channel, #'basic.consume'{queue = Queue,
-    no_ack = true}, self()),
-
-  receive
-    #'basic.consume_ok'{} -> ok
-  end,
-
-  loop(Channel).
+receive_logs_direct(Argv) ->
+  gen_server:cast(?MODULE,{receive_logs_direct, Argv}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -55,10 +37,9 @@ receive_logs_direct(Channel, Argv) ->
   {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term()} | ignore).
 
-init([Connect]) ->
-  {ok, Channel} = amqp_connection:open_channel(Connect),
-  receive_logs_direct(Channel, ["show", "create", "join", "send"]),
-  {ok, #state{}}.
+init([Channel]) ->
+  receive_logs_direct(["show", "create", "join", "send"]),
+  {ok, #state{channel=Channel}}.
 
 -spec(handle_call(Request :: term(), From :: {pid(), Tag :: term()},
     State :: #state{}) ->
@@ -75,6 +56,28 @@ handle_call(_Request, _From, State) ->
   {noreply, NewState :: #state{}} |
   {noreply, NewState :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term(), NewState :: #state{}}).
+
+handle_cast({receive_logs_direct, Argv}, State) ->
+  amqp_channel:call(State#state.channel, #'exchange.declare'{exchange = <<"direct_logs">>,
+    type = <<"direct">>}),
+
+  #'queue.declare_ok'{queue = Queue} =
+    amqp_channel:call(State#state.channel, #'queue.declare'{exclusive = true}),
+
+  [amqp_channel:call(State#state.channel, #'queue.bind'{exchange = <<"direct_logs">>,
+    routing_key = list_to_binary(Severity),
+    queue = Queue})
+    || Severity <- Argv],
+
+  amqp_channel:subscribe(State#state.channel, #'basic.consume'{queue = Queue,
+    no_ack = true}, self()),
+
+  receive
+    #'basic.consume_ok'{} -> ok
+  end,
+
+  loop(State#state.channel),
+  {noreply, State};
 handle_cast(_Request, State) ->
   {noreply, State}.
 

@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1]).
+-export([start_link/2]).
 -include_lib("amqp_client/include/amqp_client.hrl").
 
 %% gen_server callbacks
@@ -18,16 +18,15 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {
-  connect :: atom()
+  connect :: pid(),
+  channel :: pid()
 }).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec(start_link([]) ->
-  {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
-start_link(Channel) ->
-  gen_server:start_link({local, ?SERVER}, ?MODULE, [Channel], []).
+start_link(Connect, Channel) ->
+  gen_server:start_link({local, ?SERVER}, ?MODULE, [Connect, Channel], []).
 
 send_logs_direct(Argv) ->
   gen_server:cast(?MODULE, {send, Argv}).
@@ -38,8 +37,8 @@ send_logs_direct(Argv) ->
 -spec(init(Args :: term()) ->
   {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term()} | ignore).
-init([Connect]) ->
-  {ok, #state{connect=Connect}}.
+init([Connect, Channel]) ->
+  {ok, #state{connect=Connect, channel = Channel}}.
 
 -spec(handle_call(Request :: term(), From :: {pid(), Tag :: term()},
     State :: #state{}) ->
@@ -52,27 +51,27 @@ init([Connect]) ->
 handle_call(_Request, _From, State) ->
   {reply, ok, State}.
 
+
+-spec(handle_cast(Request :: term(), State :: #state{}) ->
+  {noreply, NewState :: #state{}} |
+  {noreply, NewState :: #state{}, timeout() | hibernate} |
+  {stop, Reason :: term(), NewState :: #state{}}).
+
 handle_cast({send, Argv}, State) ->
-  Connect = State#state.connect,
-  {ok, Channel} = amqp_connection:open_channel(Connect),
-  amqp_channel:call(Channel, #'exchange.declare'{exchange = <<"direct_logs">>,
+  amqp_channel:call(State#state.channel, #'exchange.declare'{exchange = <<"direct_logs">>,
     type = <<"direct">>}),
   {Severity, Message} =
     case Argv of
       [S | Msg] ->
         {list_to_binary(S), list_to_binary(string:join(Msg, " "))}
     end,
-  amqp_channel:cast(Channel,
+  amqp_channel:cast(State#state.channel,
     #'basic.publish'{
       exchange = <<"direct_logs">>,
       routing_key = Severity},
     #amqp_msg{payload = Message}),
   {noreply, State};
 
--spec(handle_cast(Request :: term(), State :: #state{}) ->
-  {noreply, NewState :: #state{}} |
-  {noreply, NewState :: #state{}, timeout() | hibernate} |
-  {stop, Reason :: term(), NewState :: #state{}}).
 handle_cast(_Request, State) ->
   {noreply, State}.
 
@@ -86,10 +85,8 @@ handle_info(_Info, State) ->
 -spec(terminate(Reason :: (normal | shutdown | {shutdown, term()} | term()),
     State :: #state{}) -> term()).
 terminate(_Reason, State) ->
-  Connect = State#state.connect,
-  {ok, Channel} = amqp_connection:open_channel(Connect),
-  ok = amqp_channel:close(Channel),
-  ok = amqp_connection:close(Connect),
+  ok = amqp_channel:close(State#state.channel),
+  ok = amqp_connection:close(State#state.connect),
   ok.
 
 -spec(code_change(OldVsn :: term() | {down, term()}, State :: #state{},
