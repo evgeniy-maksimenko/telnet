@@ -58,8 +58,7 @@ handle_call(_Request, _From, State) ->
   {stop, Reason :: term(), NewState :: #state{}}).
 
 handle_cast({receive_logs_direct, Argv}, State) ->
-  amqp_channel:call(State#state.channel, #'exchange.declare'{exchange = <<"direct_logs">>,
-    type = <<"direct">>}),
+  amqp_channel:call(State#state.channel, #'exchange.declare'{exchange = <<"direct_logs">>, type = <<"direct">>}),
 
   #'queue.declare_ok'{queue = Queue} =
     amqp_channel:call(State#state.channel, #'queue.declare'{exclusive = true}),
