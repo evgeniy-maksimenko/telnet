@@ -1,5 +1,6 @@
 -module(pb_sup).
 -behaviour(supervisor).
+-include("../../include/config.hrl").
 -export([start_link/0, init/1]).
 
 start_link() ->
@@ -11,6 +12,6 @@ init([]) ->
 
 pool_spec() ->
   {ok, List}  = application:get_env(webserver, pools),
-  Name        = pool1,
+  Name        = ?POOL_NAME,
   PoolArgs    = proplists:get_value(Name, List),
   poolboy:child_spec(Name, PoolArgs, []).

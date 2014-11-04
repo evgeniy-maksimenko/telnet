@@ -1,3 +1,5 @@
+-define(POOL_NAME, pool1).
+
 -define(LOG_ERROR(Format, Data),
   lager:log(error, [], "~p:~p(): " ++ Format ++ "~n~n", [?MODULE, ?LINE] ++ Data)).
 -define(LOG_WARNING(Format, Data),

@@ -11,6 +11,7 @@ init([]) ->
   {ok, RabbitMq}  = application:get_env(webserver, rabbitmq),
 
   ets:new(logs, [named_table, public, set]),
+
   Flags = {one_for_one, 5, 10},
   {ok, Connect} = amqp_connection:start(#amqp_params_network{host = proplists:get_value(host, RabbitMq)}),
   {ok, Channel} = amqp_connection:open_channel(Connect),

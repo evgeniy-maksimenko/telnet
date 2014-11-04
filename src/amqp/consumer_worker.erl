@@ -52,7 +52,7 @@ init([Channel]) ->
 handle_call(_Request, _From, State) ->
   {reply, ok, State}.
 
--spec(handle_cast(Request :: term(), State :: #state{}) ->
+-spec(handle_cast(Request :: term() | {receive_logs_direct, Argv::list()}, State :: #state{}) ->
   {noreply, NewState :: #state{}} |
   {noreply, NewState :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term(), NewState :: #state{}}).
@@ -72,11 +72,6 @@ handle_cast({receive_logs_direct, Argv}, State) ->
   amqp_channel:subscribe(State#state.channel, #'basic.consume'{queue = Queue,
     no_ack = true}, self()),
 
-  receive
-    #'basic.consume_ok'{} -> ok
-  end,
-
-  loop(State#state.channel),
   {noreply, State};
 handle_cast(_Request, State) ->
   {noreply, State}.
@@ -85,6 +80,11 @@ handle_cast(_Request, State) ->
   {noreply, NewState :: #state{}} |
   {noreply, NewState :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term(), NewState :: #state{}}).
+handle_info(#'basic.consume_ok'{}, State) ->
+  {noreply, State};
+handle_info({#'basic.deliver'{routing_key = RoutingKey}, #amqp_msg{payload = Body}}, State) ->
+  ets:insert(logs, {last_ets(lists:reverse(lists:sort(ets:tab2list(logs)))), RoutingKey, Body}),
+  {noreply, State};
 handle_info(_Info, State) ->
   {noreply, State}.
 
@@ -98,16 +98,6 @@ terminate(_Reason, _State) ->
   {ok, NewState :: #state{}} | {error, Reason :: term()}).
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
-
--spec loop(Channel::pid())-> 'ok'.
-loop(Channel) ->
-  receive
-    {#'basic.deliver'{routing_key = RoutingKey}, #amqp_msg{payload = Body}} ->
-%%       io:format(" [x] Receive  ~p:~p~n", [RoutingKey, Body]),
-      %% Запись в бд
-      ets:insert(logs, {last_ets(lists:reverse(lists:sort(ets:tab2list(logs)))), RoutingKey, Body}),
-      loop(Channel)
-  end.
 
 -spec last_ets(List::list()) -> Int::integer().
 last_ets([])-> 0;

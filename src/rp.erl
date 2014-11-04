@@ -38,14 +38,21 @@ init(Ref, Socket, Transport, _Opts = []) ->
     #state{socket=Socket, transport=Transport},
     ?TIMEOUT).
 
--spec(handle_info(Info :: timeout() | term(), State :: #state{}) ->
-  {noreply, NewState :: #state{}} |
-  {noreply, NewState :: #state{}, timeout() | hibernate} |
-  {stop, Reason :: term(), NewState :: #state{}}).
+
+-spec handle_info(
+  {tcp, Socket :: char(), Data :: binary()}
+  | {tcp_closed, _Socket :: char()}
+  | {tcp_error, _, Reason::tuple()}
+  | timeout
+  | timeout() | term(),
+  State :: #state{}) ->
+  {noreply, NewState :: #state{}, timeout() | hibernate}
+  | {stop, normal, NewState :: #state{}}
+  | {stop, Reason :: tuple() , NewState :: #state{}}.
 
 handle_info({tcp, Socket, Data}, State=#state{socket = Socket, transport=Transport}) ->
   Transport:setopts(Socket, [{active, once}]),
-  PoolName = pool1,
+  PoolName = ?POOL_NAME,
   case Data of
 
     <<"create/",Create/binary>> ->
