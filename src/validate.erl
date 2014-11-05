@@ -6,7 +6,7 @@ date(Date, Format) when (is_binary(Date) and is_binary(Format)) ->
   date_vs_format(format_match(Format), Format, Date);
 date(_Date,_Format) -> false.
 
--spec remark(Date::binary(), Format::binary()) -> boolean() | binary() .
+-spec remark(Date::binary(), Format::binary()) -> binary() | false.
 remark(Date, Format) when (is_binary(Date) and is_binary(Format)) ->
   date_vs_remark(format_match(Format), Format, Date);
 remark(_Date,_Format) -> false.
@@ -19,7 +19,7 @@ is_match(false) -> false.
 format_match(Format) ->
   binary:matches(Format, [<<"YYYY">>,<<"YY">>,<<"yyyy">>,<<"yy">>,<<"MM">>,<<"mm">>, <<"DD">>,<<"dd">>]).
 
--spec is_remark(List::list()) -> boolean() | binary().
+-spec is_remark(List::list()) -> binary().
 is_remark(List) ->
   [D1,F2,D3,F4,D5,_D2,_D4] = List,
   list_to_binary(binary_to_list(D1) ++ binary_to_list(F2) ++ binary_to_list(D3) ++ binary_to_list(F4) ++ binary_to_list(D5)).
