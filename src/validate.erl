@@ -2,8 +2,6 @@
 -export([date/2]).
 -compile([export_all]).
 
--define(FORMAT_SIZE_BIT, 80).
-
 -spec date(Date::binary(), Format::binary()) -> boolean() .
 date(Date, Format) when (is_binary(Date) and is_binary(Format)) ->
   FortmatMatch = binary:matches(Format, [<<"YYYY">>,<<"YY">>,<<"yyyy">>,<<"yy">>,<<"MM">>,<<"mm">>, <<"DD">>,<<"dd">>]),
@@ -24,7 +22,3 @@ date_vs_format(_,_,_) -> false.
 -spec is_match(boolean())-> boolean() .
 is_match(true)  -> true;
 is_match(false) -> false.
-
-
-
-
